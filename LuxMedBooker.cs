@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using PuppeteerSharp;
 
 namespace LuxmedBooker.Function
 {
@@ -19,17 +20,40 @@ namespace LuxmedBooker.Function
         {
             log.LogInformation("C# HTTP trigger function processed a request.");
 
-            string name = req.Query["name"];
+            using var browserFetcher = new BrowserFetcher();
+            var fetcher = await browserFetcher.DownloadAsync(BrowserFetcher.DefaultChromiumRevision);
+            // string chromiumSavePath = fetcher.FolderPath.ToString(); for sake of debugging / cleaning files
 
-            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name = name ?? data?.name;
+            Browser browser = (Browser)await Puppeteer.LaunchAsync(new LaunchOptions
+            {
+                Headless = true
+            });
 
-            string responseMessage = string.IsNullOrEmpty(name)
-                ? "This HTTP triggered function executed successfully. Pass a name in the query string or in the request body for a personalized response."
-                : $"Hello, {name}. This HTTP triggered function executed successfully.";
+            // Create a new page and go to Bing Maps
+            Page page = (Page)await browser.NewPageAsync();
+            await page.GoToAsync("https://mfo2.pl/start2/");
 
-            return new OkObjectResult(responseMessage);
+            await page.WaitForSelectorAsync("#auto_mf_login");
+            await page.FocusAsync("#auto_mf_login");
+            await page.Keyboard.TypeAsync("chajfox");
+
+            await page.WaitForSelectorAsync("#auto_mf_password");
+            await page.FocusAsync("#auto_mf_password");
+            await page.Keyboard.TypeAsync("maciek911");
+
+            var server = await page.WaitForSelectorAsync("#auto_mf_world_id");
+            await page.SelectAsync("#auto_mf_world_id", "6");
+
+            await page.ClickAsync(".guzik");
+            await page.WaitForNavigationAsync();
+
+            //credentials chajfox/maciek911
+
+            // await page.ScreenshotAsync("C:\\Files\\image.png");
+            string content = await page.GetContentAsync();
+            await browser.CloseAsync();
+
+            return new OkObjectResult(content);
         }
     }
 }
