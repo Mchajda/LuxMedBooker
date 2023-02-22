@@ -8,13 +8,16 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using PuppeteerSharp;
+using HtmlAgilityPack;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace LuxmedBooker.Function
 {
-    public static class LuxMedBooker
+    public class LuxMedBooker
     {
         [FunctionName("LuxMedBooker")]
-        public static async Task<IActionResult> Run(
+        public async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
         {
@@ -53,7 +56,26 @@ namespace LuxmedBooker.Function
             string content = await page.GetContentAsync();
             await browser.CloseAsync();
 
-            return new OkObjectResult(content);
+            var liItems = ParseHtml(content);
+
+            return new OkObjectResult(liItems);
+        }
+
+        private List<string> ParseHtml(string html)
+        {
+            HtmlDocument htmlDoc = new HtmlDocument();
+            htmlDoc.LoadHtml(html);
+
+            var programmerLinks = htmlDoc.DocumentNode.SelectNodes("//tr/td[@id='menu']/a").ToList();
+
+            List<string> wikiLink = new List<string>();
+
+            foreach (var link in programmerLinks)
+            {
+                wikiLink.Add(link.Attributes["href"].Value.ToString());
+            }
+
+            return wikiLink;
         }
     }
 }
