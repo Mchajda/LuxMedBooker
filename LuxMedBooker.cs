@@ -34,31 +34,23 @@ namespace LuxmedBooker.Function
 
             // Create a new page and go to Bing Maps
             Page page = (Page)await browser.NewPageAsync();
-            await page.GoToAsync("https://mfo2.pl/start2/");
+            await page.GoToAsync("https://rezerwacja.luxmed.pl/start/portalpacjenta");
 
-            await page.WaitForSelectorAsync("#auto_mf_login");
-            await page.FocusAsync("#auto_mf_login");
-            await page.Keyboard.TypeAsync("chajfox");
-
-            await page.WaitForSelectorAsync("#auto_mf_password");
-            await page.FocusAsync("#auto_mf_password");
-            await page.Keyboard.TypeAsync("maciek911");
-
-            var server = await page.WaitForSelectorAsync("#auto_mf_world_id");
-            await page.SelectAsync("#auto_mf_world_id", "6");
-
-            await page.ClickAsync(".guzik");
+            //login activities
+            await page.TypeAsync("input[name='Login']", Environment.GetEnvironmentVariable("login"));
+            await page.TypeAsync("input[name='Password']", Environment.GetEnvironmentVariable("password"));
+            await page.ClickAsync("button[type='submit']");
             await page.WaitForNavigationAsync();
 
-            //credentials chajfox/maciek911
+            //go to book visit
+            await page.WaitForResponseAsync(response => response.Status.ToString() == "200");
+            await page.ClickAsync("button.schedule-visit");
+            await page.WaitForNavigationAsync();
 
-            // await page.ScreenshotAsync("C:\\Files\\image.png");
             string content = await page.GetContentAsync();
             await browser.CloseAsync();
 
-            var liItems = ParseHtml(content);
-
-            return new OkObjectResult(liItems);
+            return new OkObjectResult(content);
         }
 
         private List<string> ParseHtml(string html)
