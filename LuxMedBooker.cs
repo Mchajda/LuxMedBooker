@@ -11,18 +11,11 @@ using PuppeteerSharp;
 using HtmlAgilityPack;
 using System.Collections.Generic;
 using System.Linq;
-using LuxmedBooker.Services;
 
 namespace LuxmedBooker.Function
 {
     public class LuxMedBooker
     {
-        private PageManipulator _pageManipulator;
-        public LuxMedBooker(PageManipulator pageManipulator)
-        {
-            _pageManipulator = pageManipulator;
-        }
-
         [FunctionName("LuxMedBooker")]
         public async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
@@ -30,22 +23,32 @@ namespace LuxmedBooker.Function
         {
             log.LogInformation("C# HTTP trigger function processed a request.");
 
-            _pageManipulator.InitPuppeteer();
-            _pageManipulator.GoToAsync(Environment.GetEnvironmentVariable("url"));
+            using var browserFetcher = new BrowserFetcher();
+            var fetcher = await browserFetcher.DownloadAsync(BrowserFetcher.DefaultChromiumRevision);
+            // string chromiumSavePath = fetcher.FolderPath.ToString(); for sake of debugging / cleaning files
+
+            Browser browser = (Browser)await Puppeteer.LaunchAsync(new LaunchOptions
+            {
+                Headless = true
+            });
+
+            // Create a new page and go to Bing Maps
+            Page page = (Page)await browser.NewPageAsync();
+            await page.GoToAsync("https://rezerwacja.luxmed.pl/start/portalpacjenta");
 
             //login activities
-            _pageManipulator.TypeAsync("Login", Environment.GetEnvironmentVariable("login"));
-            _pageManipulator.TypeAsync("Password", Environment.GetEnvironmentVariable("password"));
-
-            _pageManipulator.ClickByTypeAsync("submit");
+            await page.TypeAsync("input[name='Login']", Environment.GetEnvironmentVariable("login"));
+            await page.TypeAsync("input[name='Password']", Environment.GetEnvironmentVariable("password"));
+            await page.ClickAsync("button[type='submit']");
+            await page.WaitForNavigationAsync();
 
             //go to book visit
-            // await page.WaitForResponseAsync(response => response.Status.ToString() == "200");
-            // await page.ClickAsync("button.schedule-visit");
-            // await page.WaitForNavigationAsync();
+            await page.WaitForResponseAsync(response => response.Status.ToString() == "200");
+            await page.ClickAsync("button.schedule-visit");
+            await page.WaitForNavigationAsync();
 
-            string content = await _pageManipulator.GetPageConstentAsync();
-            _pageManipulator.CloseBrowserAsync();
+            string content = await page.GetContentAsync();
+            await browser.CloseAsync();
 
             return new OkObjectResult(content);
         }
