@@ -34,23 +34,28 @@ namespace LuxmedBooker.Function
 
             // Create a new page and go to Bing Maps
             Page page = (Page)await browser.NewPageAsync();
-            await page.GoToAsync("https://rezerwacja.luxmed.pl/start/portalpacjenta");
+            await page.GoToAsync(Environment.GetEnvironmentVariable("loginUrl"));
 
-            //login activities
+            // login activities
             await page.TypeAsync("input[name='Login']", Environment.GetEnvironmentVariable("login"));
             await page.TypeAsync("input[name='Password']", Environment.GetEnvironmentVariable("password"));
             await page.ClickAsync("button[type='submit']");
             await page.WaitForNavigationAsync();
 
             //go to book visit
-            await page.WaitForResponseAsync(response => response.Status.ToString() == "200");
-            await page.ClickAsync("button.schedule-visit");
+            IElementHandle button = await page.WaitForSelectorAsync("button[class~='schedule-visit']", new WaitForSelectorOptions()
+            {
+                Visible = true
+            });
+            await button.ClickAsync();
             await page.WaitForNavigationAsync();
 
+            //get Page content
             string content = await page.GetContentAsync();
             await browser.CloseAsync();
+            // string check = ParseHtml(content).First();
 
-            return new OkObjectResult(content);
+            return new OkObjectResult(button);
         }
 
         private List<string> ParseHtml(string html)
@@ -58,13 +63,13 @@ namespace LuxmedBooker.Function
             HtmlDocument htmlDoc = new HtmlDocument();
             htmlDoc.LoadHtml(html);
 
-            var programmerLinks = htmlDoc.DocumentNode.SelectNodes("//tr/td[@id='menu']/a").ToList();
+            var programmerLinks = htmlDoc.DocumentNode.SelectNodes("//button").ToList();
 
             List<string> wikiLink = new List<string>();
 
             foreach (var link in programmerLinks)
             {
-                wikiLink.Add(link.Attributes["href"].Value.ToString());
+                wikiLink.Add(link.Attributes["class"].Value.ToString());
             }
 
             return wikiLink;
