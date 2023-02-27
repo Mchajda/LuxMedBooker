@@ -12,13 +12,14 @@ using HtmlAgilityPack;
 using System.Collections.Generic;
 using System.Linq;
 using LuxmedBooker.Services;
+using LuxmedBooker.Interfaces;
 
 namespace LuxmedBooker.Function
 {
     public class LuxMedBooker
     {
-        private PageManipulator _pageManipulator;
-        public LuxMedBooker(PageManipulator pageManipulator)
+        private IPageManipulator _pageManipulator;
+        public LuxMedBooker(IPageManipulator pageManipulator)
         {
             _pageManipulator = pageManipulator;
         }
