@@ -1,0 +1,16 @@
+using LuxmedBooker.Interfaces;
+using LuxmedBooker.Services;
+using Microsoft.Azure.Functions.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
+
+[assembly: FunctionsStartup(typeof(WeatherDataIngestor.Startup))]
+namespace WeatherDataIngestor
+{
+    public class Startup : FunctionsStartup
+    {
+        public override void Configure(IFunctionsHostBuilder builder)
+        {
+            builder.Services.AddScoped<IPageManipulator, PageManipulator>();
+        }
+    }
+}
